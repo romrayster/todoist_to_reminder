@@ -29,4 +29,5 @@ Default values in (can be changed in label-reminder.csv):
 
 1. Put the API Key in the a file api-key.txt in the main directory, which you can get under: Todoist Settings -> Account -> API token
 2. Create ToDoist Labels as in the table above in your ToDoist App. 
+3. Execute the script with `php todoist_to_reminder.php` (Make sure the curl extenstion in installed)
 
