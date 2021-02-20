@@ -1,33 +1,19 @@
-## What does this script do?
+# What does this script do?
 
-Sets automatic reminders before a tasks due date based on labels assigned to it. 
-Default values in (can be changed in label-reminder.csv):
-|label  |reminder before task due date in minutes|
-|-------|-------------------|
-|3mins  |3                  |
-|5mins  |5                  |
-|10mins |10                 |
-|15mins |15                 |
-|20mins |20                 |
-|30mins |30                 |
-|45mins |45                 |
-|1hours |60                 |
-|90mins |90                 |
-|2hours |120                |
-|3hours |180                |
-|6hours |360                |
-|9hours |540                |
-|12hours|720                |
-|1day   |1440               |
-|2days  |2880               |
-|3days  |4320               |
-|5days  |7200               |
-|7days  |10080              |
+Sets automatic reminders before a tasks due date based on labels assigned to the task. 
+For example label `5-mins` sets a reminder to a task 5 minutes before it's due date. 
 
+# Setup
 
-## Setup
+1. Put the API Key in the a file `api-key.txt` in the main directory, which you can get under: Todoist Settings -> Account -> API token
+2. Execute the script with `php todoist_to_reminder.php` (Make sure the php curl extenstion in installed)
 
-1. Put the API Key in the a file api-key.txt in the main directory, which you can get under: Todoist Settings -> Account -> API token
-2. Create ToDoist Labels as in the table above in your ToDoist App. 
-3. Execute the script with `php todoist_to_reminder.php` (Make sure the curl extenstion in installed)
+# How to setup the labels?
+The labels must follow the following structure `<time offset>-<time unit>`. E.g. `25-mins`, `1-hour`, `2-days`
+Supported verbs: 
+- min, mins, minutes
+- hour,hours
+- day,days
 
+All verbs are case insensitive.
+The script can only assign values to the tasks if they have a due date, the label gets removed without setting a reminder.
