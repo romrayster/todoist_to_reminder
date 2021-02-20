@@ -153,7 +153,7 @@ function get_reminder_labels($label_translation)
             }
         }
     }
-    var_dump($label_to_reminder);
+    //var_dump($label_to_reminder);
     return $label_to_reminder;
 }
 
