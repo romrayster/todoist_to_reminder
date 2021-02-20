@@ -1,83 +1,25 @@
 <?php
 
-/*SETUP SCRIPT*/
 
-/**
- * @brief reads ToDoist API token from file. 
- * @param $filename file where the token is stored
- * @return returns the token as string
- */
-function todoist_app_token($filename = "api-key.txt")
-{
 
-    $f = fopen($filename, 'r');
-    $line = fgets($f);
-    fclose($f);
-    return $line;
-}
-/**
- * @brief reads from label to reminder csv file and transforms it to a map of labels to minutes. 
- * @param $filename name of the lable-remider.csv file. File must be built as follows: 
- * ```
- * label,type of reminder,duration in minutes
- * label,duration in minutes
- * 3mins,3
- * 5mins,5
- * 10mins,10
- * ...
- * ```
- * @return array of label to reminder type and when the reminder should notify before the event. Example:
- * ```
- * ```
- */
-function read_label_to_remider_csv($filename = "label-reminder.csv")
-{
-    $row = 1;
-    $label_to_reminder = array();
-    if (($handle = fopen($filename, "r")) !== FALSE) {
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            $num = count($data);
-            $row++;
-            if ($row != 2) {
-                for ($c = 0; $c < $num; $c++) {
-                    if (!empty($data[$c])) {
-                        if ($c == 0) {
-                            $label_to_reminder[$data[$c]] = "";
-                        } else {
-                            $label_to_reminder[$data[0]]=$data[$c];
-                        }
-                    }
-                }
-            }
-        }
-        fclose($handle);
-    }
-    return $label_to_reminder;
-}
-
-function print_debug($debug = false)
-{
-    return $debug;
-}
 /*This array gives which label name to map to which reminder*/
 /*The reminder is set in minutes before the task*/
-$label_to_reminder = read_label_to_remider_csv();
 
 
-/*END SCRIPRT SETUP*/
 
-/* Curl Setup */
+/* CURL SETUP */
 $ch = curl_init();
 $optArray = array(
     CURLOPT_URL => 'https://todoist.com/API/v8/sync',
     /*option so the result of the curl can be processes in php*/
     CURLOPT_RETURNTRANSFER => true
 );
-
 curl_setopt_array($ch, $optArray);
 curl_setopt($ch, CURLOPT_HEADER, 0);
 curl_setopt($ch, CURLOPT_POST, true);
 /*END CURL SETUP*/
+
+
 
 /*Get all the labels and create a labelname id array.
 The items reference the labels by id not by name therefore this translation array is necessary for mapping
@@ -95,8 +37,7 @@ foreach ($label_names as $label) {
     $label_translation[$label->id] = $label->name;
 }
 /*END LABEL TRANSLATION ARRAY*/
-
-
+$label_to_reminder = get_reminder_labels($label_translation);
 
 // Get all ToDos.
 /*Additional Curl Options*/
@@ -124,18 +65,18 @@ foreach ($items as $item) {
             $label_name = $label_translation[$label_id];
 
             if (in_array($label_name, $label_keys)) {
-                echo print_debug(true) ? "1. Task '".$item->content."' has the label "  . $label_name . "\n" : '';
+                echo print_debug(true) ? "1. Task '" . $item->content . "' has the label "  . $label_name . "\n" : '';
 
                 $label_match = true;
                 /**Since the newest todoist update all reminders are the same, e.g. no differentiation between email, push and desktop. */
-                $service="push";
-                $time_offset = $label_to_reminder[$label_name][0];
+                $service = "push";
+                $time_offset = $label_to_reminder[$label_name];
 
                 echo print_debug(true) ? "2. Create a  reminder " . $time_offset . " minutes before the task. \n" : "";
                 $command = todoist_create_reminder_add_command($item->id, $service, $time_offset);
 
                 $data = array('token' => todoist_app_token(), 'commands' => $command);
-              
+
                 /*Cannot set a before reminder if task has no due date*/
                 if (!empty($item->due->date)) {
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
@@ -165,14 +106,61 @@ foreach ($items as $item) {
     }
 };
 
-/*add reminders*/
 
-// schlie�e den cURL-Handle und gib die Systemresourcen frei
+// close curl
 curl_close($ch);
 
 
 
 /*Helper Methods*/
+
+/**
+ * @brief reads ToDoist API token from file. 
+ * @param $filename file where the token is stored
+ * @return returns the token as string
+ */
+function todoist_app_token($filename = "api-key.txt")
+{
+
+    $f = fopen($filename, 'r');
+    $line = fgets($f);
+    fclose($f);
+    return $line;
+}
+
+
+/**
+ * Parses all existing labels and check if any of those match the required pattern. 
+ */
+function get_reminder_labels($label_translation)
+{
+    $label_to_reminder = array();
+    foreach ($label_translation as $label_name) {
+        $label_split = explode('-', $label_name);
+        if (count($label_split) == 2) {
+            if (is_numeric($label_split[0])) {
+                if (strtolower($label_split[1]) == "min" || strtolower($label_split[1]) == "mins" 
+                || strtolower($label_split[1]) == "minutes" || strtolower($label_split[1]) == "minute"  ) {
+                    $label_to_reminder[$label_name]=(string)(int)$label_split[0];
+                }
+                if (strtolower($label_split[1]) == "hour" || strtolower($label_split[1]) == "hours") {
+                    $label_to_reminder[$label_name]=(string)((int)$label_split[0]*60);
+
+                }
+                if (strtolower($label_split[1]) == "day" || strtolower($label_split[1]) == "days") {
+                    $label_to_reminder[$label_name]=(string)((int)$label_split[0]*60*24);
+                }
+            }
+        }
+    }
+    var_dump($label_to_reminder);
+    return $label_to_reminder;
+}
+
+function print_debug($debug = false)
+{
+    return $debug;
+}
 function todoist_create_reminder_add_command($item_id, $service, $time_offset)
 {
     $command = '[{"type": "reminder_add", "temp_id": "' . guidv4(random_bytes(16)) . '",
@@ -196,6 +184,7 @@ function todoist_create_label_add_command($item_id, $labels)
     echo print_debug() ? "Created command for Label Update: \n: " . $command : "";
     return $command;
 }
+
 /*From http://stackoverflow.com/questions/2040240/php-function-to-generate-v4-uuid*/
 function guidv4($data)
 {
