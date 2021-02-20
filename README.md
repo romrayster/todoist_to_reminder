@@ -16,4 +16,5 @@ Supported verbs:
 - day,days
 
 All verbs are case insensitive.
-The script can only assign values to the tasks if they have a due date, the label gets removed without setting a reminder.
+
+The script can only assign values to the tasks if they have a due date. If the task does not have a due date the label gets removed without setting a reminder.
