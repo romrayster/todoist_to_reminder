@@ -63,6 +63,7 @@ foreach ($items as $item) {
             /*Need this if condition, because otherwise it
             will try to set reminders to all tasks with a label*/
             $label_name = $label_translation[$label_id];
+            $remove_labels = true;
 
             if (in_array($label_name, $label_keys)) {
                 echo print_debug(true) ? "1. Task '" . $item->content . "' has the label "  . $label_name . "\n" : '';
@@ -75,7 +76,6 @@ foreach ($items as $item) {
                 echo print_debug(true) ? "2. Create a  reminder " . $time_offset . " minutes before the task. \n" : "";
 
 
-                $remove_labels = true;
                 /*Cannot set a before reminder if task has no due date*/
 
                 if (!empty($item->due->date)) {
