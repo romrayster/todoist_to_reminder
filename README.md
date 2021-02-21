@@ -24,7 +24,7 @@ All verbs are case insensitive.
 ## What if the task has a reminder-label but no no due date?
 Nothing happens.
 
-## What if the tast has a reminder label but no due time, just a due date?
+## What if the task has a reminder label but no due time, just a due date?
 
 The task reminder will be set with an offset from 9:00 a.m. at the task due date. 
 
