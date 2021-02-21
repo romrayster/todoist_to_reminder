@@ -75,11 +75,13 @@ foreach ($items as $item) {
                 echo print_debug(true) ? "2. Create a  reminder " . $time_offset . " minutes before the task. \n" : "";
 
 
+                $remove_labels = true;
                 /*Cannot set a before reminder if task has no due date*/
-                $due_date=$item->due->date;
-                if (!empty($due_date)) {
+
+                if (!empty($item->due->date)) {
+                    $due_date = $item->due->date;
                     /*A task might have a due date but not a due time. So first we check if the task has both date and time by checing the string timestamo
-                    for a 'T' since the date format is as follows: 2021-02-25T12:00:00*/ 
+                    for a 'T' since the date format is as follows: 2021-02-25T12:00:00*/
                     if (str_contains($due_date, 'T')) {
                         $command = todoist_create_reminder_with_offset($item->id, $service, $time_offset);
                         $data = array('token' => todoist_app_token(), 'commands' => $command);
@@ -87,19 +89,18 @@ foreach ($items as $item) {
                         echo ("Execute command for setting reminder. Result: \n");
                         $result = curl_exec($ch);
                         var_dump($result);
-                    }
-                    else{
-                        /*Set base time at 9 in the morning*/ 
-                        $due_date=$due_date."T9:00:00";
+                    } else {
+                        /*Set base time at 9 in the morning*/
+                        $due_date = $due_date . "T9:00:00";
                         /*Substract the time offset in minutes*/
                         /**Convert to UNIX timestamp */
-                        $due_date=strtotime($due_date);
+                        $due_date = strtotime($due_date);
                         /** Remove the offset in minutes */
-                        $due_date=$due_date-(int)$time_offset*60;
+                        $due_date = $due_date - (int)$time_offset * 60;
                         /**Convert back to ISO Format 8601 */
-                        $due_date=date('c', $due_date);
+                        $due_date = date('c', $due_date);
                         /*Remove the timezone from the timestamp to be conform with todoist API*/
-                        $due_date=substr($due_date, 0,-6); 
+                        $due_date = substr($due_date, 0, -6);
                         var_dump($due_date);
                         $command = todoist_create_reminder_at_date($item->id, $service, $due_date);
                         $data = array('token' => todoist_app_token(), 'commands' => $command);
@@ -108,6 +109,10 @@ foreach ($items as $item) {
                         $result = curl_exec($ch);
                         var_dump($result);
                     }
+                } else {
+                    /**If the task has no due date the labels should not be removed.*/
+                    $remove_labels = false;
+                    echo("The task has no due date. Abort setting reminders and removing labels. \n");
                 }
             }
             /*Need this condition, bacuse after the reminder Update the label is supposed to
@@ -116,11 +121,10 @@ foreach ($items as $item) {
             Therefore add here all the ids of the labels which should not be removed*/ else {
                 array_push($label_ids, $label_id);
             }
-            //
         }
         /*Here update the item by adding all the labels which should not be removed. 
         Threfore the label to remove is automatically gone. (Since a task can have more than one label, we only remove the reminder ones) */
-        if ($label_match) {
+        if ($label_match && $remove_labels) {
             $command = todoist_create_label_add_command($item->id, $label_ids);
             $data = array('token' => todoist_app_token(), 'commands' => $command);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
@@ -228,11 +232,11 @@ function guidv4($data)
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
-function str_contains($a,$b){
+function str_contains($a, $b)
+{
     if (strpos($a, $b) !== false) {
         return true;
-    }
-    else{
+    } else {
         return false;
     }
 }
