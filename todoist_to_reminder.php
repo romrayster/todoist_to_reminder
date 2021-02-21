@@ -73,16 +73,41 @@ foreach ($items as $item) {
                 $time_offset = $label_to_reminder[$label_name];
 
                 echo print_debug(true) ? "2. Create a  reminder " . $time_offset . " minutes before the task. \n" : "";
-                $command = todoist_create_reminder_add_command($item->id, $service, $time_offset);
 
-                $data = array('token' => todoist_app_token(), 'commands' => $command);
 
                 /*Cannot set a before reminder if task has no due date*/
-                if (!empty($item->due->date)) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-                    echo ("Execute command for setting reminder. Result: \n");
-                    $result = curl_exec($ch);
-                    var_dump($result);
+                $due_date=$item->due->date;
+                if (!empty($due_date)) {
+                    /*A task might have a due date but not a due time. So first we check if the task has both date and time by checing the string timestamo
+                    for a 'T' since the date format is as follows: 2021-02-25T12:00:00*/ 
+                    if (str_contains($due_date, 'T')) {
+                        $command = todoist_create_reminder_with_offset($item->id, $service, $time_offset);
+                        $data = array('token' => todoist_app_token(), 'commands' => $command);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                        echo ("Execute command for setting reminder. Result: \n");
+                        $result = curl_exec($ch);
+                        var_dump($result);
+                    }
+                    else{
+                        /*Set base time at 9 in the morning*/ 
+                        $due_date=$due_date."T9:00:00";
+                        /*Substract the time offset in minutes*/
+                        /**Convert to UNIX timestamp */
+                        $due_date=strtotime($due_date);
+                        /** Remove the offset in minutes */
+                        $due_date=$due_date-(int)$time_offset*60;
+                        /**Convert back to ISO Format 8601 */
+                        $due_date=date('c', $due_date);
+                        /*Remove the timezone from the timestamp to be conform with todoist API*/
+                        $due_date=substr($due_date, 0,-6); 
+                        var_dump($due_date);
+                        $command = todoist_create_reminder_at_date($item->id, $service, $due_date);
+                        $data = array('token' => todoist_app_token(), 'commands' => $command);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                        echo ("Execute command for setting reminder. Result: \n");
+                        $result = curl_exec($ch);
+                        var_dump($result);
+                    }
                 }
             }
             /*Need this condition, bacuse after the reminder Update the label is supposed to
@@ -139,16 +164,17 @@ function get_reminder_labels($label_translation)
         $label_split = explode('-', $label_name);
         if (count($label_split) == 2) {
             if (is_numeric($label_split[0])) {
-                if (strtolower($label_split[1]) == "min" || strtolower($label_split[1]) == "mins" 
-                || strtolower($label_split[1]) == "minutes" || strtolower($label_split[1]) == "minute"  ) {
-                    $label_to_reminder[$label_name]=(string)(int)$label_split[0];
+                if (
+                    strtolower($label_split[1]) == "min" || strtolower($label_split[1]) == "mins"
+                    || strtolower($label_split[1]) == "minutes" || strtolower($label_split[1]) == "minute"
+                ) {
+                    $label_to_reminder[$label_name] = (string)(int)$label_split[0];
                 }
                 if (strtolower($label_split[1]) == "hour" || strtolower($label_split[1]) == "hours") {
-                    $label_to_reminder[$label_name]=(string)((int)$label_split[0]*60);
-
+                    $label_to_reminder[$label_name] = (string)((int)$label_split[0] * 60);
                 }
                 if (strtolower($label_split[1]) == "day" || strtolower($label_split[1]) == "days") {
-                    $label_to_reminder[$label_name]=(string)((int)$label_split[0]*60*24);
+                    $label_to_reminder[$label_name] = (string)((int)$label_split[0] * 60 * 24);
                 }
             }
         }
@@ -161,13 +187,22 @@ function print_debug($debug = false)
 {
     return $debug;
 }
-function todoist_create_reminder_add_command($item_id, $service, $time_offset)
+function todoist_create_reminder_with_offset($item_id, $service, $time_offset)
 {
     $command = '[{"type": "reminder_add", "temp_id": "' . guidv4(random_bytes(16)) . '",
     "uuid": "' . guidv4(random_bytes(16)) . '","args": {"item_id": ' . $item_id . ', "service": "' . $service . '",  "minute_offset": "' . $time_offset . '"}}]';
     echo print_debug() ? "Created command for reminder update: \n: " . $command : "";
     return $command;
 }
+
+function todoist_create_reminder_at_date($item_id, $service, $date)
+{
+    $command = '[{"type": "reminder_add", "temp_id": "' . guidv4(random_bytes(16)) . '",
+    "uuid": "' . guidv4(random_bytes(16)) . '","args": {"item_id": ' . $item_id . ', "service": "' . $service . '",  "due":{"date": "' . $date . '"}}}]';
+    echo print_debug() ? "Created command for reminder update: \n: " . $command : "";
+    return $command;
+}
+
 function todoist_create_label_add_command($item_id, $labels)
 {
     /*Make the the array to a string*/
@@ -192,4 +227,12 @@ function guidv4($data)
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+function str_contains($a,$b){
+    if (strpos($a, $b) !== false) {
+        return true;
+    }
+    else{
+        return false;
+    }
 }
