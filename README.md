@@ -1,7 +1,10 @@
 # What does this script do?
 
 Sets automatic reminders before a tasks due date based on labels assigned to the task. 
+
 For example label `5-mins` sets a reminder to a task 5 minutes before it's due date. 
+
+After setting the reminder the label(s) are removed.
 
 # Setup
 
@@ -17,4 +20,12 @@ Supported verbs:
 
 All verbs are case insensitive.
 
-The script can only assign values to the tasks if they have a due date. If the task does not have a due date the label gets removed without setting a reminder.
+# Special Cases
+## What if the task has a reminder-label but no no due date?
+Nothing happens.
+
+## What if the tast has a reminder label but no due time, just a due date?
+
+The task reminder will be set with an offset from 9:00 a.m. at the task due date. 
+
+For example a task with a due date of Friday and a label `25-mins` will get a reminder at Friday 8:35 a.m.
