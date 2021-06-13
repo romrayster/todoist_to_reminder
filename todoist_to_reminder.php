@@ -112,7 +112,7 @@ foreach ($items as $item) {
                 } else {
                     /**If the task has no due date the labels should not be removed.*/
                     $remove_labels = false;
-                    echo("The task has no due date. Abort setting reminders and removing labels. \n");
+                    echo ("The task has no due date. Abort setting reminders and removing labels. \n");
                 }
             }
             /*Need this condition, bacuse after the reminder Update the label is supposed to
@@ -135,6 +135,7 @@ foreach ($items as $item) {
     }
 };
 
+todoist_set_email_notifications($ch);
 
 // close curl
 curl_close($ch);
@@ -187,7 +188,7 @@ function get_reminder_labels($label_translation)
     return $label_to_reminder;
 }
 
-function print_debug($debug = false)
+function print_debug($debug = true)
 {
     return $debug;
 }
@@ -222,6 +223,34 @@ function todoist_create_label_add_command($item_id, $labels)
       "args": {"id": ' . $item_id . ', "labels" :"' . $label_array_string . '"}}]';
     echo print_debug() ? "Created command for Label Update: \n: " . $command : "";
     return $command;
+}
+
+function todoist_set_email_notifications($ch)
+{
+    # 1-5 Mo-Fr, 6,1= Sat, Sunday
+    $weekday=date('w');
+    $hour=date('H');
+    # Setting Email Notifications to True for all email reminders
+    # Monday till friday 8-20h
+    if($weekday==0 || $weekday==6){
+        $email_notifications = "false";
+    }
+    # If Monday till friday, enable email notifcations for 
+    # 8-20:00
+    else if($hour >= 8 && $hour <= 20){
+        $email_notifications = "true";
+    }
+    else {
+        $email_notifications = "false";
+    }
+    $command = '[{"type": "user_settings_update",  "uuid": "' . guidv4(random_bytes(16)) . '",
+        "args": {"reminder_email":' . $email_notifications . '}}]';
+    echo print_debug() ? "\n Created command for Updating Notification Type: \n: " . $command : "";
+    $data = array('token' => todoist_app_token(), 'commands' => $command);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    echo ("Execute changing email notification to ".$email_notifications." \n");
+    $result = curl_exec($ch);
+    var_dump($result);
 }
 
 /*From http://stackoverflow.com/questions/2040240/php-function-to-generate-v4-uuid*/
